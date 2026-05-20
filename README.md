@@ -2,6 +2,31 @@
 
 A production-ready REST API built with **Express.js**, **TypeScript**, and **MongoDB** featuring JWT authentication via **httpOnly cookies** with automatic **token rotation**.
 
+## 🚀 Quick Start
+
+### With Docker (recommended — zero setup)
+
+```bash
+# Development mode (hot reload, no .env needed)
+docker compose --profile dev up --build
+
+# Production mode (needs .env with real secrets)
+cp .env.example .env   # edit with your secrets first
+docker compose --profile prod up -d --build
+```
+
+That's it. MongoDB is included. Server runs on **http://localhost:3000**.
+
+### Without Docker
+
+```bash
+cp .env.example .env   # edit with your MongoDB URI + secrets
+npm install
+npm run dev            # → http://localhost:3000
+```
+
+> **Prerequisites:** Node.js ≥ 18 + MongoDB running locally (or use the Docker option which bundles everything).
+
 ## Features
 
 - 🔐 **Register** — `POST /api/auth/register`
@@ -47,6 +72,9 @@ express_rest_api_vp/
 ├── .env.example               # Environment variable template
 ├── .eslintrc.json             # ESLint config (TypeScript)
 ├── .prettierrc                # Prettier config
+├── Dockerfile                 # Multi-stage Docker build
+├── .dockerignore              # Docker build exclusions
+├── docker-compose.yml         # Docker Compose (MongoDB + API)
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -54,19 +82,21 @@ express_rest_api_vp/
 
 ## Prerequisites
 
-- **Node.js** >= 18
-- **MongoDB** (local or Atlas — free tier works)
+- **Node.js** >= 18 (or **Docker**)
+- **MongoDB** (local, Atlas, or Docker)
 - **npm**
 
 ## Getting Started
 
-### 1. Install
+### Option A: Local (Node.js)
+
+#### 1. Install
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment
+#### 2. Configure Environment
 
 ```bash
 cp .env.example .env
@@ -93,7 +123,7 @@ REFRESH_TOKEN_EXPIRY=7d
 > node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 > ```
 
-### 3. Run
+#### 3. Run
 
 ```bash
 # Development (nodemon + ts-node, auto-restart)
@@ -102,6 +132,57 @@ npm run dev
 # Production
 npm run build
 npm start
+```
+
+### Option B: Docker Compose
+
+No local Node.js or MongoDB install needed — everything runs in containers.
+
+#### Development (hot reload)
+
+```bash
+# Start MongoDB + dev API with hot reload
+# Dev secrets are auto-provided; no .env needed
+docker compose --profile dev up --build
+
+# Stop
+Ctrl+C
+docker compose --profile dev down
+```
+
+Changes to `src/` trigger automatic restart thanks to the mounted volume and nodemon.
+
+#### Production
+
+```bash
+# Copy and configure environment (secrets are required)
+cp .env.example .env
+# Edit .env with your actual secrets
+
+# Start MongoDB + production API
+docker compose --profile prod up -d --build
+
+# Check logs
+docker compose logs -f app
+
+# Stop
+docker compose --profile prod down
+```
+
+#### Useful Commands
+
+```bash
+# Start only MongoDB (run API locally)
+docker compose up -d mongo
+
+# View logs for a specific service
+docker compose logs -f app-dev
+
+# Rebuild and restart
+docker compose --profile dev up --build --force-recreate
+
+# Tear down everything including volumes
+docker compose --profile dev down -v
 ```
 
 ## API Reference
@@ -280,6 +361,25 @@ curl http://localhost:3000/api/health
   "timestamp": "2025-03-17T12:00:00.000Z"
 }
 ```
+
+## Docker
+
+See [Getting Started → Option B](#option-b-docker-compose) above for Docker Compose instructions.
+
+### Image Details
+
+- **Base:** `node:22-alpine` (~50 MB compressed)
+- **Build:** Multi-stage — TypeScript compiled in builder stage, production stage has only runtime deps
+- **Security:** Runs as non-root user `app` (UID 1001)
+- **Health check:** `GET /api/health` every 30s
+
+### docker-compose.yml
+
+| Service | Description | Profile |
+|---------|-------------|---------|
+| `mongo` | MongoDB 7 with persistent volume | *(always)* |
+| `app` | Production API (compiled JS) | `--profile prod` |
+| `app-dev` | Development API (hot reload) | `--profile dev` |
 
 ## Authentication Flow
 

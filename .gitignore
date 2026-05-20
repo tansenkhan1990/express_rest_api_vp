@@ -1,3 +1,6 @@
 node_modules/
 dist/
 .env
+
+# Docker
+docker-compose.override.yml
